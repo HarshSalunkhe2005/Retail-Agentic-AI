@@ -193,15 +193,30 @@ def random_sample_basket():
     return codes[:3]
 
 
+def _code_to_option(code):
+    """Convert a raw product code to its 'CODE | Description' option string."""
+    if not code:
+        return ""
+    if code in product_lookup:
+        return f"{code} | {product_lookup[code]}"
+    return code
+
+
 def set_random_basket():
     """Callback to set random basket and trigger UI update."""
     codes = random_sample_basket()
     padded = (codes + ["", "", ""])[:3]
     st.session_state["sample_codes"] = padded
+    st.session_state["p1_val"] = _code_to_option(padded[0])
+    st.session_state["p2_val"] = _code_to_option(padded[1])
+    st.session_state["p3_val"] = _code_to_option(padded[2])
 
 
 def clear_basket():
     st.session_state["sample_codes"] = ["", "", ""]
+    st.session_state["p1_val"] = ""
+    st.session_state["p2_val"] = ""
+    st.session_state["p3_val"] = ""
 
 
 # ─────────────────────────────────────────
@@ -226,6 +241,13 @@ if "sample_codes" not in st.session_state:
     st.session_state["sample_codes"] = ["", "", ""]
 if "last_recs" not in st.session_state:
     st.session_state["last_recs"] = None
+# Initialize product selection state
+if "p1_val" not in st.session_state:
+    st.session_state["p1_val"] = ""
+if "p2_val" not in st.session_state:
+    st.session_state["p2_val"] = ""
+if "p3_val" not in st.session_state:
+    st.session_state["p3_val"] = ""
 
 # ─────────────────────────────────────────
 # LAYOUT
@@ -243,30 +265,22 @@ with left:
     with col_clear:
         st.button("🗑️ Clear", on_click=clear_basket)
 
-    def _default_idx(code):
-        if not code:
-            return 0
-        for i, opt in enumerate(product_options_with_blank):
-            if opt.startswith(code + " |") or opt.startswith(code + "|"):
-                return i
-        return 0
-
-    p1 = st.selectbox(
+    st.selectbox(
         "Product 1 (required)",
         options=product_options_with_blank,
-        index=_default_idx(st.session_state["sample_codes"][0]),
+        key="p1_val",
         help="Type to search by code or description",
     )
-    p2 = st.selectbox(
+    st.selectbox(
         "Product 2 (optional)",
         options=product_options_with_blank,
-        index=_default_idx(st.session_state["sample_codes"][1]),
+        key="p2_val",
         help="Type to search by code or description",
     )
-    p3 = st.selectbox(
+    st.selectbox(
         "Product 3 (optional)",
         options=product_options_with_blank,
-        index=_default_idx(st.session_state["sample_codes"][2]),
+        key="p3_val",
         help="Type to search by code or description",
     )
 
@@ -298,7 +312,9 @@ with right:
                 return None
             return sel.split("|")[0].strip()
 
-        raw_codes = [parse_code(p1), parse_code(p2), parse_code(p3)]
+        raw_codes = [parse_code(st.session_state["p1_val"]),
+                     parse_code(st.session_state["p2_val"]),
+                     parse_code(st.session_state["p3_val"])]
         query_codes = [c for c in raw_codes if c]
 
         if not query_codes:
