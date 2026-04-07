@@ -39,6 +39,19 @@ RISK_META = {
     "High":   {"color": "#ef4444", "icon": "🔴", "range": "70–100%"},
 }
 
+# Churn calibration constants
+# 90-day threshold matches the model's training label (IsChurned = Recency > 90)
+RECENCY_RISK_THRESHOLD  = 90      # days — sigmoid inflection point
+CHURN_SIGMOID_K         = 0.07    # slope of risk curve around the threshold
+FREQ_RISK_DAMPEN_SCALE  = 250.0   # high-frequency customers get up to 12% risk reduction
+FREQ_RISK_DAMPEN_MAX    = 0.12    # max fractional risk reduction from frequency
+
+# Derived-feature estimation constants (used when actual values are unavailable)
+UNIQUE_PROD_RATE      = 0.7   # ~70% of orders contain a unique product category
+UNIQUE_PROD_CAP       = 50    # upper bound on unique products per customer
+LIFETIME_RECENCY_PAD  = 90.0  # minimum additional days of lifetime beyond recency
+MIN_LIFETIME_DAYS     = 180.0 # absolute minimum customer lifetime assumed
+
 
 # ─────────────────────────────────────────
 # MODEL LOADING
@@ -89,8 +102,8 @@ def get_churn(churn_model, recency, frequency, monetary):
     We display a calibrated sigmoid probability so all 4 risk tiers are visible.
     """
     # Calibrated smooth probability (model is near-binary; sigmoid gives gradual transitions)
-    base     = 1.0 / (1.0 + np.exp(-0.07 * (recency - 90)))
-    freq_mod = 1.0 - min(frequency / 250.0, 0.12)   # high frequency slightly reduces risk
+    base     = 1.0 / (1.0 + np.exp(-CHURN_SIGMOID_K * (recency - RECENCY_RISK_THRESHOLD)))
+    freq_mod = 1.0 - min(frequency / FREQ_RISK_DAMPEN_SCALE, FREQ_RISK_DAMPEN_MAX)
     prob     = float(np.clip(base * freq_mod, 0.005, 0.995))
 
     if prob < 0.20:
@@ -143,7 +156,7 @@ def generate_recommendation(segment, risk_tier, churn_prob, features_dict, impor
     for feat, imp in top3:
         val = features_dict.get(feat, 0)
         if feat == "Recency":
-            signal = "⚠️ above risk threshold" if val > 90 else "✅ within safe range"
+            signal = "⚠️ above risk threshold" if val > RECENCY_RISK_THRESHOLD else "✅ within safe range"
         elif feat == "CustomerLifetimeDays":
             signal = "✅ established customer" if val >= 365 else "⚠️ relatively new"
         elif feat in CHURN_NEGATIVE:
@@ -230,7 +243,7 @@ def explain_churn_drivers(features_dict, importance_dict, top_n=5):
     colors = []
     for n, v in zip(names, values):
         if n == "Recency":
-            colors.append("#ef4444" if v > 90 else "#10b981")
+            colors.append("#ef4444" if v > RECENCY_RISK_THRESHOLD else "#10b981")
         elif n in CHURN_NEGATIVE:
             colors.append("#10b981")
         else:
@@ -326,11 +339,11 @@ with right:
             "Recency":              float(recency),
             "Frequency":            float(frequency),
             "Monetary":             float(monetary),
-            "UniqueProducts":       float(min(max(int(frequency * 0.7), 1), 50)),
+            "UniqueProducts":       float(min(max(int(frequency * UNIQUE_PROD_RATE), 1), UNIQUE_PROD_CAP)),
             "AvgOrderValue":        float(monetary / max(frequency, 1)),
             "TotalItems":           float(frequency * 2),
             "AvgDaysBetweenOrders": float(min(365.0 / max(frequency, 1), 365.0)),
-            "CustomerLifetimeDays": float(max(recency + 90.0, 180.0)),
+            "CustomerLifetimeDays": float(max(recency + LIFETIME_RECENCY_PAD, MIN_LIFETIME_DAYS)),
             "ReturnRate":           0.0,
             "ReturnCount":          0.0,
             "CountryEnc":           0.0,
