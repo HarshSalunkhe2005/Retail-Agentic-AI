@@ -255,21 +255,18 @@ with left:
         "Product 1 (required)",
         options=product_options_with_blank,
         index=_default_idx(st.session_state["sample_codes"][0]),
-        key="p1",
         help="Type to search by code or description",
     )
     p2 = st.selectbox(
         "Product 2 (optional)",
         options=product_options_with_blank,
         index=_default_idx(st.session_state["sample_codes"][1]),
-        key="p2",
         help="Type to search by code or description",
     )
     p3 = st.selectbox(
         "Product 3 (optional)",
         options=product_options_with_blank,
         index=_default_idx(st.session_state["sample_codes"][2]),
-        key="p3",
         help="Type to search by code or description",
     )
 
