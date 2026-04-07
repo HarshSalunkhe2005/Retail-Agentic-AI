@@ -38,6 +38,8 @@ st.markdown("""
 # ─────────────────────────────────────────
 # STRENGTH CONFIG
 # ─────────────────────────────────────────
+MAX_CHART_LABEL_LEN = 20
+
 STRENGTH_META = {
     "Very Strong": {"icon": "🟢", "color": "#10b981"},
     "Strong":      {"icon": "🔵", "color": "#3b82f6"},
@@ -138,7 +140,9 @@ def get_recommendations(query_codes: list, min_lift: float, top_n: int, rules: p
     # Deduplicate: keep highest-lift rule per product code
     rec_df = rec_df.sort_values("lift", ascending=False).drop_duplicates("product_code")
     # Add category stub (not in pkl, derive from description)
-    rec_df["category"] = rec_df["description"].apply(lambda d: d.split()[0].title())
+    rec_df["category"] = rec_df["description"].apply(
+        lambda d: d.split()[0].title() if d and d.split() else "Unknown"
+    )
     rec_df = rec_df.head(top_n).reset_index(drop=True)
     rec_df.insert(0, "rank", range(1, len(rec_df) + 1))
     return rec_df
@@ -379,7 +383,7 @@ if _last_recs is not None and not _last_recs.empty:
 
     with chart1:
         top_lift = _last_recs.head(10).copy()
-        top_lift["label"] = top_lift["product_code"] + " | " + top_lift["description"].str[:20]
+        top_lift["label"] = top_lift["product_code"] + " | " + top_lift["description"].str[:MAX_CHART_LABEL_LEN]
         color_map = {
             s: STRENGTH_META[s]["color"]
             for s in STRENGTH_META
@@ -412,7 +416,7 @@ if _last_recs is not None and not _last_recs.empty:
             color="strength",
             color_discrete_map=color_map,
             hover_data=["product_code", "description", "support"],
-            title="Confidence vs Lift (coloured by Rule Strength)",
+            title="Confidence vs Lift (colored by Rule Strength)",
             labels={
                 "confidence": "Confidence",
                 "lift": "Lift",
