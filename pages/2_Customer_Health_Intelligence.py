@@ -146,6 +146,16 @@ def build_cluster_label_map(kmeans):
     }
 
 
+def inverse_transform_rfm(scaled_values, scaler):
+    """Reverse RobustScaler + log1p to recover raw (Recency, Frequency, Monetary)."""
+    raw_log = scaled_values * scaler.scale_ + scaler.center_
+    raw = np.expm1(raw_log)
+    recency  = max(1, int(raw[0]))
+    freq     = max(1, int(raw[1]))
+    monetary = max(1.0, float(raw[2]))
+    return recency, freq, monetary
+
+
 # ─────────────────────────────────────────
 # HEADER
 # ─────────────────────────────────────────
@@ -296,21 +306,23 @@ centers    = kmeans.cluster_centers_
 seg_labels = [label_map[i] for i in range(kmeans.n_clusters)]
 seg_colors = [SEGMENT_META[s]["color"] for s in seg_labels]
 
-# Synthetic population for visualisation (representative distribution)
+# Representative cluster-size proportions (Core / Regular / Lapsing / Dormant)
+# derived from typical retail RFM distributions; used only for analytics charts.
+SYNTHETIC_DIST = [0.30, 0.35, 0.20, 0.15]
+
 np.random.seed(42)
 N_SAMPLES = 400
 synth_records = []
 for cid in range(kmeans.n_clusters):
-    n = int(N_SAMPLES * [0.30, 0.35, 0.20, 0.15][cid])
+    n = int(N_SAMPLES * SYNTHETIC_DIST[cid])
     c = centers[cid]
     for _ in range(n):
         r = max(1, np.random.normal(c[0], 0.4))
         f = max(1, np.random.normal(c[1], 0.3))
         m = max(1, np.random.normal(c[2], 0.4))
-        # Inverse-transform to raw RFM for churn model
-        raw_r = int(np.expm1(r * rfm_scaler.scale_[0] + rfm_scaler.center_[0]))
-        raw_f = max(1, int(np.expm1(f * rfm_scaler.scale_[1] + rfm_scaler.center_[1])))
-        raw_m = max(1, float(np.expm1(m * rfm_scaler.scale_[2] + rfm_scaler.center_[2])))
+        raw_r, raw_f, raw_m = inverse_transform_rfm(
+            np.array([r, f, m]), rfm_scaler
+        )
         _, risk = get_churn(churn_model, raw_r, raw_f, raw_m)
         synth_records.append({"Segment": label_map[cid], "RiskTier": risk})
 
