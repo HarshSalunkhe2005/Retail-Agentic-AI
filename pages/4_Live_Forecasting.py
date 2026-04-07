@@ -63,7 +63,7 @@ def _detect_columns(df: pd.DataFrame):
     revenue_col = None
 
     date_keywords = ["date", "ds", "week", "time", "period", "day", "month"]
-    rev_keywords = ["revenue", "sales", "y", "amount", "value", "turnover", "income", "price"]
+    rev_keywords = ["revenue", "sales", "y", "amount", "value", "turnover", "income"]
 
     cols_lower = {c: c.lower() for c in df.columns}
 
@@ -158,16 +158,10 @@ with col_right:
 
         # ── Forecast from today forward ───────────────────────────────────────
         today = pd.Timestamp("2026-04-07")
-        last_date = df_prophet["ds"].max()
 
-        # Build future dataframe: fill gap from last training date to today,
-        # then add horizon_weeks weeks of true future
-        future_start = max(last_date + pd.Timedelta(weeks=1), today)
-        future_dates = pd.date_range(start=future_start, periods=horizon_weeks, freq="W")
-        future_df = pd.DataFrame({"ds": pd.concat([
-            pd.Series(df_prophet["ds"]),
-            pd.Series(future_dates),
-        ]).reset_index(drop=True)})
+        # make_future_dataframe extends the training period by horizon_weeks weeks,
+        # giving us historical + future rows. We then filter to rows >= today.
+        future_df = model.make_future_dataframe(periods=horizon_weeks, freq="W")
 
         forecast = model.predict(future_df)
         forecast["yhat"] = np.clip(forecast["yhat"], 0, None)
