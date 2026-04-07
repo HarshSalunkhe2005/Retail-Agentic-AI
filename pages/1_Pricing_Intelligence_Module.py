@@ -41,20 +41,12 @@ ACTION_DESCRIPTION = {
 @st.cache_resource
 def load_model():
     for base in ["models", ""]:
-        model_path = os.path.join(base, "pricing_model.pkl")
-        scaler_path = os.path.join(base, "pricing_scaler.pkl")
-        if os.path.exists(model_path) and os.path.exists(scaler_path):
-            try:
-                model = joblib.load(model_path)
-                scaler = joblib.load(scaler_path)
-                return model, scaler
-            except Exception as e:
-                st.error(f"Failed to load model files: {e}")
-                return None, None
-    st.error(
-        "Model files not found. Ensure `pricing_model.pkl` and "
-        "`pricing_scaler.pkl` are present in the `models/` directory."
-    )
+        try:
+            model = joblib.load(os.path.join(base, "pricing_model.pkl"))
+            scaler = joblib.load(os.path.join(base, "pricing_scaler.pkl"))
+            return model, scaler
+        except:
+            continue
     return None, None
 
 model, scaler = load_model()
@@ -108,9 +100,6 @@ with left:
     st.markdown(f"<small>Price Ratio: {ratio:.3f}</small>", unsafe_allow_html=True)
 
     run = st.button("Generate Pricing Strategy")
-
-    st.markdown("---")
-    st.subheader("Analytics")
 
 # ───────── RIGHT (OUTPUT)
 with right:
@@ -202,9 +191,7 @@ try:
         )
         st.plotly_chart(fig4, use_container_width=True)
 
-except FileNotFoundError:
-    st.info("Analytics data not available. Place `pricing_data.csv` in the `powerbi/` directory to enable charts.")
-except Exception as e:
-    st.warning(f"Could not load analytics data: {e}")
+except:
+    pass
 
 st.sidebar.markdown("**SIT Pune | Group 18**")

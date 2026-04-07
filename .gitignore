@@ -1,7 +1,4 @@
 venv/
-*.pyc
-__pycache__/
+.pyc
 .DS_Store
 file_hierarchy.txt
-.streamlit/secrets.toml
-.env
