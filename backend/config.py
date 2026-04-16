@@ -56,3 +56,8 @@ DEFAULT_RETURN_RATE      = 0.0
 DEFAULT_RETURN_COUNT     = 0.0
 DEFAULT_COUNTRY_FEATURE  = 0.0
 DEFAULT_CATEGORY_FEATURE = 0.0
+
+# ── Local AI (Ollama) ─────────────────────────────────────────────────────────
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral")
+OLLAMA_TIMEOUT_SECONDS = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", 30))
